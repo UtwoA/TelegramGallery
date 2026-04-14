@@ -9,6 +9,9 @@ from app.web.routes import router as web_router
 
 
 def create_app() -> FastAPI:
+    # StaticFiles requires the directory to exist at app creation time.
+    settings.media_root.mkdir(parents=True, exist_ok=True)
+
     app = FastAPI(title=settings.app_name, debug=settings.debug)
     app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
