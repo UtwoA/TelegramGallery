@@ -108,7 +108,7 @@ docker compose build
 docker compose up -d web
 ```
 
-Веб внутри сервера будет доступен на `127.0.0.1:8000` (снаружи закрыт, доступ через Nginx).
+Веб внутри сервера будет доступен на `127.0.0.1:${TG_WEB_HOST_PORT}` (по умолчанию `18000`, снаружи закрыт, доступ через Nginx).
 
 4. Запустить Telegram-бота (опционально):
 
@@ -143,6 +143,12 @@ docker compose down
 docker compose up -d web
 ```
 
+По умолчанию хост-порт: `18000`. Можно изменить в `.env`:
+
+```env
+TG_WEB_HOST_PORT=18000
+```
+
 3. Установите nginx-конфиг из репозитория:
 
 ```bash
@@ -151,6 +157,8 @@ sudo ln -s /etc/nginx/sites-available/seoul.utwoa.ru /etc/nginx/sites-enabled/se
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+Если меняете `TG_WEB_HOST_PORT`, обновите в nginx `proxy_pass` на тот же порт.
 
 4. Выпустите HTTPS сертификат:
 
