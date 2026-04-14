@@ -3,6 +3,9 @@ from pathlib import Path
 
 from imageio_ffmpeg import get_ffmpeg_exe
 from PIL import Image, ImageOps
+from pillow_heif import register_heif_opener
+
+register_heif_opener()
 
 
 class MediaProcessor:

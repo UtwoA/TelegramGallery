@@ -328,9 +328,10 @@ async def upload_files(
     uploaded_ids: list[str] = []
     for upload in files:
         content = await upload.read()
-        max_size = settings.max_upload_size_mb * 1024 * 1024
-        if len(content) > max_size:
-            raise HTTPException(status_code=400, detail=f"File {upload.filename} exceeds size limit")
+        if settings.max_upload_size_mb > 0:
+            max_size = settings.max_upload_size_mb * 1024 * 1024
+            if len(content) > max_size:
+                raise HTTPException(status_code=400, detail=f"File {upload.filename} exceeds size limit")
 
         parsed_shot_at = None
         if shot_at:

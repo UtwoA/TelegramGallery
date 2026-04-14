@@ -29,6 +29,7 @@
 - aiogram
 - Pillow
 - imageio-ffmpeg (ffmpeg backend для видео)
+- pillow-heif (поддержка HEIC/HEIF с iPhone)
 
 ## Структура проекта
 
@@ -184,6 +185,12 @@ sudo certbot --nginx -d seoul.utwoa.ru
 - `TG_LOGIN_RATE_LIMIT_ATTEMPTS` — число попыток в окне
 - `TG_LOGIN_RATE_LIMIT_WINDOW_SECONDS` — размер окна в секундах
 - `TG_LOGIN_RATE_LIMIT_BLOCK_SECONDS` — блокировка после превышения
+
+## Ограничение размера и HEIC
+
+- `TG_MAX_UPLOAD_SIZE_MB` ограничивает размер одного загружаемого файла.
+- Чтобы убрать ограничение, установите `TG_MAX_UPLOAD_SIZE_MB=0`.
+- Фото в формате HEIC/HEIF (iPhone) поддерживаются и автоматически конвертируются в web-версии (`optimized/thumbnail` в JPEG).
 
 ## Структура просмотра
 
