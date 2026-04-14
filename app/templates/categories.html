@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Категории</h1>
+  <form method="post" action="/categories" class="form-grid compact">
+    <label>Название <input type="text" name="name" required /></label>
+    <label class="full">Описание <textarea name="description" rows="2"></textarea></label>
+    <label class="full">Текст секции (story intro) <textarea name="story_intro" rows="2"></textarea></label>
+    <label>Порядок <input type="number" name="sort_order" value="100" /></label>
+    <label><input type="checkbox" name="show_on_landing" checked /> Показывать на лендинге</label>
+    <div><button type="submit">Добавить</button></div>
+  </form>
+
+  <ul class="category-list">
+    {% for category in categories %}
+      <li>
+        <strong>{{ category.name }}</strong> <span class="muted">#{{ category.sort_order }}</span>
+        <span class="muted">{{ category.description or '—' }}</span>
+        <span class="muted">{{ category.story_intro or 'Без story intro' }}</span>
+      </li>
+    {% else %}
+      <li class="muted">Пока нет категорий.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

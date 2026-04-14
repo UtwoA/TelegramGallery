@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel">
+  <h1>Загрузка файлов</h1>
+  <p class="muted">Перетащите фото/видео в область ниже или выберите файлы вручную.</p>
+
+  <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+    <div id="dropzone" class="dropzone">
+      <input type="file" id="file-input" name="files" multiple required />
+      <p>Перетащите файлы сюда или нажмите для выбора</p>
+    </div>
+
+    <div class="form-grid">
+      <label>Название <input type="text" name="title" /></label>
+      <label>Категория
+        <select name="category_id">
+          <option value="">Без категории</option>
+          {% for category in categories %}
+            <option value="{{ category.id }}">{{ category.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="full">Описание <textarea name="description" rows="3"></textarea></label>
+      <label>Теги (через запятую) <input type="text" name="tags" /></label>
+      <label>Дата съемки <input type="datetime-local" name="shot_at" /></label>
+      <label>Место <input type="text" name="place_name" placeholder="Дом" /></label>
+      <label>Город <input type="text" name="place_city" /></label>
+      <label>Страна <input type="text" name="place_country" /></label>
+      <label>Порядок отображения <input type="number" name="display_order" value="100" /></label>
+      <label>Тип декора
+        <select name="decor_usage">
+          {% for value, label in decor_usage_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label><input type="checkbox" name="is_decorative" /> Это декоративное изображение</label>
+      <label><input type="checkbox" name="show_on_landing" checked /> Показывать на лендинге</label>
+    </div>
+
+    <div class="upload-actions">
+      <button type="submit">Загрузить</button>
+      <span id="upload-status" class="muted"></span>
+    </div>
+    <div id="progress-bar" class="progress hidden"><span></span></div>
+  </form>
+</section>
+{% endblock %}

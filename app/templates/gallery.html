@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero-showcase panel">
+  <div class="hero-copy">
+    <p class="eyebrow">Семейная медиатека</p>
+    <h1>TelegramGallery</h1>
+    <p>
+      Витрина ваших историй: быстрые превью, аккуратные секции и удобный просмотр оригиналов.
+    </p>
+    <div class="hero-metrics">
+      <span><strong>{{ total_count }}</strong> файлов</span>
+      <span><strong>{{ showcase_sections|length }}</strong> разделов</span>
+    </div>
+  </div>
+
+  <div class="hero-strip">
+    {% for item in featured_items %}
+      <a href="/story/{{ item.uuid }}" class="hero-chip">
+        <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+      </a>
+    {% else %}
+      <div class="hero-empty">Добавьте первые фото или видео</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel filter-panel">
+  <form class="filters" method="get">
+    <label>
+      Категория
+      <select name="category_id">
+        <option value="">Все разделы</option>
+        {% for category in categories %}
+          <option value="{{ category.id }}" {% if selected_category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>
+      Сортировка
+      <select name="sort">
+        {% for key, label in sort_options.items() %}
+          <option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit">Применить</button>
+  </form>
+</section>
+
+{% if not media_items %}
+  <section class="empty-state panel">Пока нет медиа. Загрузите первый файл.</section>
+{% endif %}
+
+{% for section in showcase_sections %}
+  <section class="showcase-section panel accent-{{ section.accent }}" id="{{ section.id }}">
+    <header class="showcase-head">
+      <div>
+        <h2>{{ section.name }}</h2>
+        <p class="muted">{{ section.media_items|length }} файлов в разделе</p>
+      </div>
+      {% if section.hidden_count > 0 %}
+        <button
+          type="button"
+          class="section-toggle"
+          data-target="{{ section.id }}"
+          data-hidden-count="{{ section.hidden_count }}"
+          aria-expanded="false"
+        >
+          Показать все файлы раздела (+{{ section.hidden_count }})
+        </button>
+      {% endif %}
+    </header>
+
+    <div class="gallery-grid showcase-grid" data-group="{{ section.id }}">
+      {% for item in section.media_items %}
+        <article class="card {% if loop.index > 6 %}is-hidden extra-card{% endif %}">
+          <a href="/story/{{ item.uuid }}" class="card-preview">
+            {% if item.media_type.value == "image" %}
+              <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+            {% else %}
+              <div class="video-preview-wrap">
+                <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+                <span class="video-badge">Видео</span>
+              </div>
+            {% endif %}
+          </a>
+          <div class="card-body">
+            <h3>{{ item.title or item.original_filename }}</h3>
+            <p>{{ item.description or "Без описания" }}</p>
+            <small>{{ item.uploaded_at.strftime('%d.%m.%Y') }}</small>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+{% endblock %}

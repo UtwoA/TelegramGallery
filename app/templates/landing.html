@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="landing-hero panel reveal" style="--hero-bg:url('{{ public_path(hero_bg) if hero_bg else '/static/img/images.png' }}')">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <p class="eyebrow">Travel Story</p>
+    <h1>Путешествие, рассказанное кадрами</h1>
+    <p class="hero-subtitle">От прибытия до финального вечера — мягкая визуальная история семьи в одном месте.</p>
+    <p class="hero-intro">Просматривайте главы поездки последовательно: каждая секция ведет дальше и раскрывается по вашему темпу.</p>
+    <a class="btn" href="/all-photos">Перейти к просмотру всех фото</a>
+  </div>
+</section>
+
+<section class="panel reveal media-showreel">
+  <div class="showreel-carousel" id="showreel-carousel">
+    <button type="button" class="carousel-arrow prev" data-carousel-prev aria-label="Предыдущий слайд">‹</button>
+    <div class="showreel-track" data-carousel-track>
+      <figure class="showreel-card" data-lightbox-item>
+        <img src="/static/img/landing-placeholder-a.jpg" alt="Placeholder visual A" loading="lazy" />
+      </figure>
+      <figure class="showreel-card video-card" data-lightbox-item>
+        <video autoplay muted loop playsinline controls poster="/static/img/landing-video-poster.svg">
+          <source src="/static/img/landing-placeholder.mp4" type="video/mp4" />
+        </video>
+      </figure>
+      <figure class="showreel-card" data-lightbox-item>
+        <img src="/static/img/landing-placeholder-b.jpg" alt="Placeholder visual B" loading="lazy" />
+      </figure>
+    </div>
+    <button type="button" class="carousel-arrow next" data-carousel-next aria-label="Следующий слайд">›</button>
+    <div class="carousel-dots" data-carousel-dots>
+      <button type="button" aria-label="Слайд 1"></button>
+      <button type="button" aria-label="Слайд 2"></button>
+      <button type="button" aria-label="Слайд 3"></button>
+    </div>
+  </div>
+</section>
+<div class="showreel-lightbox hidden" id="showreel-lightbox" aria-hidden="true">
+  <button type="button" class="lightbox-close" id="showreel-lightbox-close" aria-label="Закрыть">×</button>
+  <div class="lightbox-content" id="showreel-lightbox-content"></div>
+</div>
+
+<div class="storyline">
+  {% for section in sections %}
+    <section class="story-section panel reveal accent-{{ section.accent }}" id="{{ section.id }}">
+      <div class="story-head">
+        <div>
+          <h2>{{ section.title }}</h2>
+          <p>{{ section.intro }}</p>
+        </div>
+        {% if section.hidden_count > 0 %}
+          <button type="button" class="section-toggle" data-target="{{ section.id }}" data-hidden-count="{{ section.hidden_count }}" aria-expanded="false">
+            Раскрыть раздел (+{{ section.hidden_count }})
+          </button>
+        {% endif %}
+      </div>
+
+      <div class="gallery-grid showcase-grid" data-group="{{ section.id }}">
+        {% for item in section.media_items %}
+          <article class="card {% if loop.index > 5 %}is-hidden extra-card{% endif %}">
+            <a href="/story/{{ item.uuid }}" class="card-preview">
+              {% if item.media_type.value == "image" %}
+                <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+              {% else %}
+                <div class="video-preview-wrap">
+                  <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+                  <span class="video-badge">Видео</span>
+                </div>
+              {% endif %}
+            </a>
+          </article>
+        {% endfor %}
+      </div>
+    </section>
+
+    {% if mood_images and loop.index0 < mood_images|length %}
+      <section class="mood-block reveal">
+        <img src="{{ public_path(mood_images[loop.index0]) }}" alt="Mood image {{ loop.index }}" loading="lazy" />
+      </section>
+    {% endif %}
+
+    {% if not mood_images %}
+      <section class="mood-block reveal">
+        <img src="/static/img/landing-divider.png" alt="Story divider" loading="lazy" />
+      </section>
+    {% endif %}
+  {% else %}
+    <section class="panel empty-state">Пока нет медиа. Добавьте файлы и разделы путешествия.</section>
+  {% endfor %}
+</div>
+{% endblock %}

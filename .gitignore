@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+data/media/*
+data/telegram_gallery.db
+.alembic_cache/

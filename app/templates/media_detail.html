@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="panel media-detail clean-detail reveal">
+  <div class="media-view">
+    {% if media.media_type.value == "image" %}
+      <img src="{{ display_path }}" alt="Media" />
+    {% else %}
+      <video controls preload="metadata" poster="{{ '/media/' + media.thumbnail_path if media.thumbnail_path else '' }}">
+        <source src="{{ display_path }}" type="{{ media.mime_type if media.optimized_path is none else 'video/mp4' }}" />
+      </video>
+    {% endif %}
+  </div>
+
+  <aside class="media-meta compact-meta">
+    {% if media.title %}
+      <h1>{{ media.title }}</h1>
+    {% else %}
+      <h1>Семейный момент</h1>
+    {% endif %}
+
+    {% if media.description %}
+      <p class="detail-description">{{ media.description }}</p>
+    {% endif %}
+
+    <a class="btn" href="{{ original_path }}" target="_blank">Открыть оригинал</a>
+  </aside>
+</article>
+
+{% if is_admin %}
+<section class="panel reveal">
+  <h2>Редактирование</h2>
+  <form action="/story/{{ media.uuid }}/edit" method="post" class="form-grid">
+    <label>Название <input type="text" name="title" value="{{ media.title or '' }}" /></label>
+    <label>Категория
+      <select name="category_id">
+        <option value="">Без категории</option>
+        {% for category in categories %}
+          <option value="{{ category.id }}" {% if media.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="full">Описание <textarea name="description" rows="4">{{ media.description or '' }}</textarea></label>
+    <label>Теги (через запятую)
+      <input type="text" name="tags" value="{% for tag in media.tags %}{{ tag.name }}{% if not loop.last %}, {% endif %}{% endfor %}" />
+    </label>
+    <label>Дата съемки
+      <input type="datetime-local" name="shot_at" value="{{ media.shot_at.strftime('%Y-%m-%dT%H:%M') if media.shot_at else '' }}" />
+    </label>
+    <label>Место <input type="text" name="place_name" value="{{ media.place.name if media.place else '' }}" /></label>
+    <label>Город <input type="text" name="place_city" value="{{ media.place.city if media.place else '' }}" /></label>
+    <label>Страна <input type="text" name="place_country" value="{{ media.place.country if media.place else '' }}" /></label>
+    <label>Порядок <input type="number" name="display_order" value="{{ media.display_order }}" /></label>
+    <label>Тип декора
+      <select name="decor_usage">
+        {% for value, label in decor_usage_choices %}
+          <option value="{{ value }}" {% if media.decor_usage == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label><input type="checkbox" name="is_decorative" {% if media.is_decorative %}checked{% endif %} /> Декоративное</label>
+    <label><input type="checkbox" name="show_on_landing" {% if media.show_on_landing %}checked{% endif %} /> Показывать на лендинге</label>
+    <div><button type="submit">Сохранить</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

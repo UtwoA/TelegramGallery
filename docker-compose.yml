@@ -1,0 +1,29 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegramgallery-web
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:${TG_WEB_HOST_PORT:-18000}:8000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    command: >
+      sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: telegramgallery-bot
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    profiles: ["bot"]
+    command: >
+      sh -c "alembic upgrade head && python -m app.bot.runner"
