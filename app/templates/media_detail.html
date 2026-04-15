@@ -74,7 +74,7 @@
 
 {% if media.media_type.value == "image" %}
 <section class="panel reveal">
-  <h2>Редактирование изображения</h2>
+  <h2>Поворот изображения</h2>
   <div class="image-tools">
     <form action="/story/{{ media.uuid }}/image-action" method="post">
       <input type="hidden" name="operation" value="rotate_left" />
@@ -83,22 +83,6 @@
     <form action="/story/{{ media.uuid }}/image-action" method="post">
       <input type="hidden" name="operation" value="rotate_right" />
       <button type="submit" class="btn secondary">Повернуть вправо</button>
-    </form>
-    <form action="/story/{{ media.uuid }}/image-action" method="post">
-      <input type="hidden" name="operation" value="flip_horizontal" />
-      <button type="submit" class="btn secondary">Отразить по горизонтали</button>
-    </form>
-    <form action="/story/{{ media.uuid }}/image-action" method="post">
-      <input type="hidden" name="operation" value="flip_vertical" />
-      <button type="submit" class="btn secondary">Отразить по вертикали</button>
-    </form>
-    <form action="/story/{{ media.uuid }}/image-action" method="post">
-      <input type="hidden" name="operation" value="enhance" />
-      <button type="submit" class="btn secondary">Улучшить</button>
-    </form>
-    <form action="/story/{{ media.uuid }}/image-action" method="post">
-      <input type="hidden" name="operation" value="grayscale" />
-      <button type="submit" class="btn secondary">Черно-белый</button>
     </form>
   </div>
 </section>

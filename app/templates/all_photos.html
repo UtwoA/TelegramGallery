@@ -4,6 +4,10 @@
   <section class="panel reveal">
     <p>Изменения применены к файлам: <strong>{{ request.query_params.get('bulk_saved') }}</strong>.</p>
   </section>
+{% elif request.query_params.get('bulk_deleted') %}
+  <section class="panel reveal">
+    <p>Удалено файлов: <strong>{{ request.query_params.get('bulk_deleted') }}</strong>.</p>
+  </section>
 {% elif request.query_params.get('bulk_error') %}
   <section class="panel reveal">
     <p class="error">Не выбрано ни одного файла для массового изменения.</p>
@@ -47,6 +51,13 @@
   </div>
 
   <form method="post" action="/all-photos/bulk-update" id="bulk-form" class="bulk-form-grid">
+    <label>
+      Удаление
+      <select name="delete_action">
+        <option value="no">Не удалять</option>
+        <option value="delete">Удалить выбранные файлы</option>
+      </select>
+    </label>
     <label>
       Категория
       <select name="category_action">

@@ -2,6 +2,9 @@
 {% block content %}
 <section class="panel">
   <h1>Категории</h1>
+  {% if request.query_params.get("saved") %}
+    <p class="flash success">Категория обновлена.</p>
+  {% endif %}
   <form method="post" action="/categories" class="form-grid compact">
     <label>Название <input type="text" name="name" required /></label>
     <label class="full">Описание <textarea name="description" rows="2"></textarea></label>
@@ -14,9 +17,14 @@
   <ul class="category-list">
     {% for category in categories %}
       <li>
-        <strong>{{ category.name }}</strong> <span class="muted">#{{ category.sort_order }}</span>
-        <span class="muted">{{ category.description or '—' }}</span>
-        <span class="muted">{{ category.story_intro or 'Без story intro' }}</span>
+        <form method="post" action="/categories/{{ category.id }}/edit" class="form-grid compact">
+          <label>Название <input type="text" name="name" value="{{ category.name }}" required /></label>
+          <label>Порядок <input type="number" name="sort_order" value="{{ category.sort_order }}" /></label>
+          <label><input type="checkbox" name="show_on_landing" {% if category.show_on_landing %}checked{% endif %} /> Показывать на лендинге</label>
+          <label class="full">Описание <textarea name="description" rows="2">{{ category.description or '' }}</textarea></label>
+          <label class="full">Текст секции (story intro) <textarea name="story_intro" rows="2">{{ category.story_intro or '' }}</textarea></label>
+          <div><button type="submit">Сохранить категорию</button></div>
+        </form>
       </li>
     {% else %}
       <li class="muted">Пока нет категорий.</li>

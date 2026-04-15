@@ -187,6 +187,16 @@
       const selectedCount = checkboxes.filter((cb) => cb.checked).length;
       if (selectedCount === 0) {
         event.preventDefault();
+        return;
+      }
+
+      const deleteAction = bulkForm.querySelector("select[name='delete_action']");
+      if (deleteAction && deleteAction.value === "delete") {
+        const ok = window.confirm(`Удалить выбранные файлы (${selectedCount}) безвозвратно?`);
+        if (!ok) {
+          event.preventDefault();
+          return;
+        }
       }
     });
 

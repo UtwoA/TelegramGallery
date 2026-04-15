@@ -72,10 +72,6 @@ def media_display_path(media: MediaFile) -> str:
 IMAGE_OPERATIONS = {
     "rotate_left",
     "rotate_right",
-    "flip_horizontal",
-    "flip_vertical",
-    "grayscale",
-    "enhance",
 }
 
 
@@ -241,6 +237,7 @@ def all_photos_page(
 async def bulk_update_media(
     request: Request,
     media_ids: list[str] = Form(default=[]),
+    delete_action: str = Form(default="no"),
     category_action: str = Form(default="no_change"),
     category_id: str | None = Form(default=None),
     tags_action: str = Form(default="no_change"),
@@ -261,6 +258,15 @@ async def bulk_update_media(
     media_items = media_repo.by_uuids(unique_ids)
     if not media_items:
         return RedirectResponse(url="/all-photos?bulk_error=1", status_code=303)
+
+    if delete_action == "delete":
+        for media in media_items:
+            storage_service.delete_if_exists(media.original_path)
+            storage_service.delete_if_exists(media.optimized_path)
+            storage_service.delete_if_exists(media.thumbnail_path)
+            media.tags = []
+            media_repo.delete(media)
+        return RedirectResponse(url=f"/all-photos?bulk_deleted={len(media_items)}", status_code=303)
 
     parsed_tags = [item.strip() for item in (tags or "").split(",") if item.strip()]
     tag_entities = taxonomy_repo.find_or_create_tags(parsed_tags) if parsed_tags else []
@@ -571,6 +577,36 @@ def create_category(
         show_on_landing=_bool_from_form(show_on_landing),
     )
     return RedirectResponse(url="/categories", status_code=303)
+
+
+@router.post("/categories/{category_id}/edit")
+def edit_category(
+    request: Request,
+    category_id: int,
+    name: str = Form(...),
+    description: str | None = Form(default=None),
+    story_intro: str | None = Form(default=None),
+    sort_order: int = Form(default=100),
+    show_on_landing: str | None = Form(default=None),
+    db: Session = Depends(get_db),
+):
+    guard = admin_guard(request)
+    if guard:
+        return guard
+
+    taxonomy_repo = TaxonomyRepository(db)
+    category = taxonomy_repo.get_category(category_id)
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    taxonomy_repo.update_category(
+        category=category,
+        name=name,
+        description=description,
+        story_intro=story_intro,
+        sort_order=sort_order,
+        show_on_landing=_bool_from_form(show_on_landing),
+    )
+    return RedirectResponse(url="/categories?saved=1", status_code=303)
 
 
 @router.get("/login", response_class=HTMLResponse)

@@ -42,6 +42,35 @@ class TaxonomyRepository:
         self.db.refresh(category)
         return category
 
+    def update_category(
+        self,
+        category: Category,
+        name: str,
+        description: str | None = None,
+        story_intro: str | None = None,
+        sort_order: int = 100,
+        show_on_landing: bool = True,
+    ) -> Category:
+        clean_name = name.strip()
+        if clean_name and clean_name != category.name:
+            slug = slugify(clean_name)
+            idx = 1
+            while self.db.scalar(select(Category).where(Category.slug == slug, Category.id != category.id)):
+                idx += 1
+                slug = f"{slugify(clean_name)}-{idx}"
+            category.name = clean_name
+            category.slug = slug
+
+        category.description = description
+        category.story_intro = story_intro
+        category.sort_order = sort_order
+        category.show_on_landing = show_on_landing
+
+        self.db.add(category)
+        self.db.commit()
+        self.db.refresh(category)
+        return category
+
     def find_or_create_tags(self, names: list[str]) -> list[Tag]:
         result: list[Tag] = []
         for raw_name in names:
