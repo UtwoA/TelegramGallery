@@ -20,6 +20,13 @@ class StorageService:
         path.write_bytes(data)
         return path
 
+    def delete_if_exists(self, relative_path: str | None) -> None:
+        if not relative_path:
+            return
+        path = self.absolute_path(relative_path)
+        if path.exists():
+            path.unlink()
+
     def relative_for(self, zone: str, media_uuid: str, ext: str) -> str:
         clean_ext = ext if ext.startswith(".") else f".{ext}"
         return f"{zone}/{media_uuid}{clean_ext}"

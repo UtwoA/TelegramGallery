@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 
 from imageio_ffmpeg import get_ffmpeg_exe
-from PIL import Image, ImageOps
+from PIL import Image, ImageEnhance, ImageOps
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
@@ -30,6 +30,36 @@ class MediaProcessor:
                 if thumb.mode != "RGB":
                     thumb = thumb.convert("RGB")
                 thumb.save(thumbnail, format="JPEG", quality=82, optimize=True)
+            return True, None
+        except Exception as exc:  # noqa: BLE001
+            return False, str(exc)
+
+    def apply_image_operation(
+        self,
+        source_image: Path,
+        optimized: Path,
+        thumbnail: Path,
+        operation: str,
+    ) -> tuple[bool, str | None]:
+        try:
+            optimized.parent.mkdir(parents=True, exist_ok=True)
+            thumbnail.parent.mkdir(parents=True, exist_ok=True)
+
+            with Image.open(source_image) as img:
+                edited = ImageOps.exif_transpose(img)
+                edited = self._transform_image(edited, operation)
+                if edited.mode not in ("RGB", "L"):
+                    edited = edited.convert("RGB")
+
+                optimized_img = edited.copy()
+                optimized_img.thumbnail((1920, 1920))
+                optimized_img.save(optimized, format="JPEG", quality=86, optimize=True)
+
+                thumb = ImageOps.fit(edited, (480, 480), method=Image.Resampling.LANCZOS)
+                if thumb.mode != "RGB":
+                    thumb = thumb.convert("RGB")
+                thumb.save(thumbnail, format="JPEG", quality=82, optimize=True)
+
             return True, None
         except Exception as exc:  # noqa: BLE001
             return False, str(exc)
@@ -98,6 +128,24 @@ class MediaProcessor:
             return proc.returncode == 0
         except FileNotFoundError:
             return False
+
+    @staticmethod
+    def _transform_image(image: Image.Image, operation: str) -> Image.Image:
+        if operation == "rotate_left":
+            return image.rotate(90, expand=True)
+        if operation == "rotate_right":
+            return image.rotate(-90, expand=True)
+        if operation == "flip_horizontal":
+            return ImageOps.mirror(image)
+        if operation == "flip_vertical":
+            return ImageOps.flip(image)
+        if operation == "grayscale":
+            return ImageOps.grayscale(image).convert("RGB")
+        if operation == "enhance":
+            contrast = ImageEnhance.Contrast(image).enhance(1.1)
+            color = ImageEnhance.Color(contrast).enhance(1.08)
+            return ImageEnhance.Sharpness(color).enhance(1.07)
+        raise ValueError("Unsupported image operation")
 
 
 media_processor = MediaProcessor()

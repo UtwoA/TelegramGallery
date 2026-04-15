@@ -318,6 +318,48 @@ body.lightbox-open {
   flex-wrap: wrap;
 }
 
+.flash {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 0.95rem;
+}
+
+.flash.success {
+  color: #155724;
+  background: #e9f8ed;
+  border-color: #b8e7c4;
+}
+
+.flash.error {
+  color: #842029;
+  background: #fdecef;
+  border-color: #f3bec7;
+}
+
+.image-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.image-tools form {
+  margin: 0;
+}
+
+.danger-zone {
+  border-color: #f0d4d8;
+}
+
+.danger-btn {
+  background: #b2243f;
+}
+
+.danger-btn:hover {
+  background: #991f36;
+}
+
 .story-head h2,
 .util-head h1,
 .showcase-head h2,

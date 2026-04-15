@@ -20,6 +20,10 @@ class MediaRepository:
         self.db.refresh(media)
         return media
 
+    def delete(self, media: MediaFile) -> None:
+        self.db.delete(media)
+        self.db.commit()
+
     def by_uuid(self, media_uuid: str) -> MediaFile | None:
         return self.db.scalar(
             select(MediaFile)

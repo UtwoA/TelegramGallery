@@ -10,11 +10,13 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.db import get_db
-from app.models import Category, MediaFile
+from app.models import Category, MediaFile, MediaStatus
 from app.repositories.media_repository import MediaRepository
 from app.repositories.taxonomy_repository import TaxonomyRepository
 from app.repositories.user_repository import UserRepository
+from app.services.media_processor import media_processor
 from app.services.media_service import MediaCreatePayload, MediaService
+from app.services.storage_service import storage_service
 from app.web.auth import admin_guard, auth_guard, get_client_ip, is_admin, is_authenticated
 from app.web.login_rate_limiter import login_rate_limiter
 
@@ -65,6 +67,16 @@ def media_display_path(media: MediaFile) -> str:
     if media.optimized_path:
         return f"/media/{media.optimized_path}"
     return f"/media/{media.original_path}"
+
+
+IMAGE_OPERATIONS = {
+    "rotate_left",
+    "rotate_right",
+    "flip_horizontal",
+    "flip_vertical",
+    "grayscale",
+    "enhance",
+}
 
 
 def media_public_path(media: MediaFile | None) -> str | None:
@@ -448,6 +460,79 @@ async def edit_media(
 
     media_repo.save(media)
     return RedirectResponse(url=f"/story/{media_uuid}?saved=1", status_code=303)
+
+
+@router.post("/story/{media_uuid}/image-action")
+async def apply_image_action(
+    request: Request,
+    media_uuid: str,
+    operation: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    guard = admin_guard(request)
+    if guard:
+        return guard
+
+    if operation not in IMAGE_OPERATIONS:
+        return RedirectResponse(url=f"/story/{media_uuid}?image_error=1", status_code=303)
+
+    media_repo = MediaRepository(db)
+    media = media_repo.by_uuid(media_uuid)
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+    if media.media_type.value != "image":
+        return RedirectResponse(url=f"/story/{media_uuid}?image_error=1", status_code=303)
+
+    source_rel = media.optimized_path or media.original_path
+    source_abs = storage_service.absolute_path(source_rel)
+    if not source_abs.exists():
+        source_abs = storage_service.absolute_path(media.original_path)
+    if not source_abs.exists():
+        return RedirectResponse(url=f"/story/{media_uuid}?image_error=1", status_code=303)
+
+    if not media.optimized_path:
+        media.optimized_path = storage_service.relative_for("optimized", media.uuid, ".jpg")
+    if not media.thumbnail_path:
+        media.thumbnail_path = storage_service.relative_for("thumbnails", media.uuid, ".jpg")
+
+    ok, _error = media_processor.apply_image_operation(
+        source_image=source_abs,
+        optimized=storage_service.absolute_path(media.optimized_path),
+        thumbnail=storage_service.absolute_path(media.thumbnail_path),
+        operation=operation,
+    )
+    if not ok:
+        media.status = MediaStatus.FAILED
+        media_repo.save(media)
+        return RedirectResponse(url=f"/story/{media_uuid}?image_error=1", status_code=303)
+
+    media.status = MediaStatus.READY
+    media_repo.save(media)
+    return RedirectResponse(url=f"/story/{media_uuid}?image_saved=1", status_code=303)
+
+
+@router.post("/story/{media_uuid}/delete")
+async def delete_media(
+    request: Request,
+    media_uuid: str,
+    db: Session = Depends(get_db),
+):
+    guard = admin_guard(request)
+    if guard:
+        return guard
+
+    media_repo = MediaRepository(db)
+    media = media_repo.by_uuid(media_uuid)
+    if not media:
+        raise HTTPException(status_code=404, detail="Media not found")
+
+    storage_service.delete_if_exists(media.original_path)
+    storage_service.delete_if_exists(media.optimized_path)
+    storage_service.delete_if_exists(media.thumbnail_path)
+
+    media.tags = []
+    media_repo.delete(media)
+    return RedirectResponse(url="/all-photos?deleted=1", status_code=303)
 
 
 @router.get("/categories", response_class=HTMLResponse)
