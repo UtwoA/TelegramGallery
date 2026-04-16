@@ -15,6 +15,9 @@ class TaxonomyRepository:
     def get_category(self, category_id: int) -> Category | None:
         return self.db.get(Category, category_id)
 
+    def get_category_by_name(self, name: str) -> Category | None:
+        return self.db.scalar(select(Category).where(Category.name == name.strip()))
+
     def create_category(
         self,
         name: str,

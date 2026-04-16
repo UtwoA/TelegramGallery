@@ -65,7 +65,7 @@
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          if (statusNode) statusNode.textContent = "Файлы успешно загружены";
+          if (statusNode) statusNode.textContent = "Файлы загружены. Обработка выполняется в фоне.";
           setTimeout(() => {
             window.location.href = "/all-photos";
           }, 450);

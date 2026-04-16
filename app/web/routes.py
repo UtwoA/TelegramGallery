@@ -3,14 +3,14 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from slugify import slugify
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.db import get_db
+from app.core.db import SessionLocal, get_db
 from app.models import Category, MediaFile, MediaStatus
 from app.repositories.media_repository import MediaRepository
 from app.repositories.taxonomy_repository import TaxonomyRepository
@@ -53,6 +53,16 @@ SECTION_FALLBACK_NAMES = [
     "Случайные моменты",
     "Финал поездки",
 ]
+
+
+def process_media_batch(media_uuids: list[str]) -> None:
+    db = SessionLocal()
+    try:
+        service = MediaService(db)
+        for media_uuid in media_uuids:
+            service.process_media_by_uuid(media_uuid)
+    finally:
+        db.close()
 
 
 def media_preview_path(media: MediaFile) -> str:
@@ -322,6 +332,7 @@ def upload_page(request: Request, db: Session = Depends(get_db)):
 @router.post("/upload")
 async def upload_files(
     request: Request,
+    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
     title: str | None = Form(default=None),
     description: str | None = Form(default=None),
@@ -390,8 +401,12 @@ async def upload_files(
             payload=payload,
             original_rel=original_rel,
             original_abs=original_abs,
+            process_now=False,
         )
         uploaded_ids.append(media.uuid)
+
+    if uploaded_ids:
+        background_tasks.add_task(process_media_batch, uploaded_ids)
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
         return {"ok": True, "uploaded": uploaded_ids}

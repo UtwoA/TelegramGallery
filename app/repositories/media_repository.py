@@ -41,6 +41,14 @@ class MediaRepository:
         )
         return list(self.db.scalars(query).all())
 
+    def exists_by_filename_and_category(self, filename: str, category_id: int | None) -> bool:
+        query = select(MediaFile.id).where(MediaFile.original_filename == filename)
+        if category_id is None:
+            query = query.where(MediaFile.category_id.is_(None))
+        else:
+            query = query.where(MediaFile.category_id == category_id)
+        return self.db.scalar(query) is not None
+
     def list_gallery(
         self,
         category_id: int | None = None,

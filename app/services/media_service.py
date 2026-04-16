@@ -48,7 +48,16 @@ class MediaService:
         ext = extension_for_original(payload.filename)
         original_rel = storage_service.relative_for("originals", media_uuid, ext)
         original_abs = storage_service.save_bytes(original_rel, payload.bytes_data)
-        return self._create_with_original(owner, payload, media_uuid, mime_type, media_type, original_rel, original_abs)
+        return self._create_with_original(
+            owner,
+            payload,
+            media_uuid,
+            mime_type,
+            media_type,
+            original_rel,
+            original_abs,
+            process_now=True,
+        )
 
     def create_media_from_existing_original(
         self,
@@ -56,6 +65,7 @@ class MediaService:
         payload: MediaCreatePayload,
         original_rel: str,
         original_abs: Path,
+        process_now: bool = True,
     ) -> MediaFile:
         mime_type = guess_mime(payload.filename, payload.mime_type)
         media_type = detect_media_type(payload.filename, mime_type)
@@ -63,7 +73,16 @@ class MediaService:
             raise ValueError("Unsupported file type")
 
         media_uuid = Path(original_rel).stem
-        return self._create_with_original(owner, payload, media_uuid, mime_type, media_type, original_rel, original_abs)
+        return self._create_with_original(
+            owner,
+            payload,
+            media_uuid,
+            mime_type,
+            media_type,
+            original_rel,
+            original_abs,
+            process_now=process_now,
+        )
 
     def _create_with_original(
         self,
@@ -74,6 +93,7 @@ class MediaService:
         media_type: MediaType,
         original_rel: str,
         original_abs: Path,
+        process_now: bool,
     ) -> MediaFile:
         media = MediaFile(
             uuid=media_uuid,
@@ -106,9 +126,35 @@ class MediaService:
         if payload.tags:
             media.tags = self.taxonomy_repo.find_or_create_tags(payload.tags)
 
-        if media_type == MediaType.IMAGE:
-            optimized_rel = storage_service.relative_for("optimized", media_uuid, ".jpg")
-            thumb_rel = storage_service.relative_for("thumbnails", media_uuid, ".jpg")
+        if process_now:
+            self._process_media_entity(media, original_abs)
+        else:
+            media.status = MediaStatus.PENDING
+
+        return self.media_repo.save(media)
+
+    def process_media_by_uuid(self, media_uuid: str) -> MediaFile | None:
+        media = self.media_repo.by_uuid(media_uuid)
+        if not media:
+            return None
+        original_abs = storage_service.absolute_path(media.original_path)
+        if not original_abs.exists():
+            media.status = MediaStatus.FAILED
+            media.description = self._append_processing_error(media.description, "original file not found")
+            return self.media_repo.save(media)
+
+        try:
+            self._process_media_entity(media, original_abs)
+            return self.media_repo.save(media)
+        except Exception as exc:  # noqa: BLE001
+            media.status = MediaStatus.FAILED
+            media.description = self._append_processing_error(media.description, str(exc))
+            return self.media_repo.save(media)
+
+    def _process_media_entity(self, media: MediaFile, original_abs: Path) -> None:
+        if media.media_type == MediaType.IMAGE:
+            optimized_rel = storage_service.relative_for("optimized", media.uuid, ".jpg")
+            thumb_rel = storage_service.relative_for("thumbnails", media.uuid, ".jpg")
             ok, error = media_processor.process_image(
                 original_abs,
                 storage_service.absolute_path(optimized_rel),
@@ -121,10 +167,11 @@ class MediaService:
             else:
                 media.status = MediaStatus.FAILED
                 media.description = self._append_processing_error(media.description, error)
+            return
 
-        if media_type == MediaType.VIDEO:
-            optimized_rel = storage_service.relative_for("optimized", media_uuid, ".mp4")
-            thumb_rel = storage_service.relative_for("thumbnails", media_uuid, ".jpg")
+        if media.media_type == MediaType.VIDEO:
+            optimized_rel = storage_service.relative_for("optimized", media.uuid, ".mp4")
+            thumb_rel = storage_service.relative_for("thumbnails", media.uuid, ".jpg")
             opt_ok, thumb_ok, error = media_processor.process_video(
                 original_abs,
                 storage_service.absolute_path(optimized_rel),
@@ -140,8 +187,6 @@ class MediaService:
             else:
                 media.status = MediaStatus.PARTIAL
                 media.description = self._append_processing_error(media.description, error)
-
-        return self.media_repo.save(media)
 
     @staticmethod
     def _append_processing_error(description: str | None, message: str | None) -> str:

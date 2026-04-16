@@ -194,8 +194,14 @@ sudo certbot --nginx -d seoul.utwoa.ru
 - `TG_MAX_UPLOAD_SIZE_MB` ограничивает размер одного загружаемого файла.
 - Чтобы убрать ограничение, установите `TG_MAX_UPLOAD_SIZE_MB=0`.
 - Фото в формате HEIC/HEIF (iPhone) поддерживаются и автоматически конвертируются в web-версии (`optimized/thumbnail` в JPEG).
-- Для крупных файлов через Nginx увеличьте `client_max_body_size` (в примере конфига уже `2G`).
+- Для крупных файлов через Nginx увеличьте `client_max_body_size` (в примере конфига уже `4G`).
 - После изменения лимитов перезапустите сервисы: `docker compose up -d --build web` и `sudo systemctl reload nginx`.
+
+## Производительность загрузки и просмотра
+
+- Веб-загрузка сохраняет оригиналы сразу и запускает обработку (thumbnail/optimized) в фоне, поэтому ответ приходит быстрее.
+- Для быстрой отдачи медиа в Nginx добавлен `location /media/` с `alias` на `data/media` (обходит Python для раздачи больших файлов).
+- В Nginx включен `proxy_request_buffering off` для более быстрого стриминга больших upload-запросов.
 
 ## Структура просмотра
 
@@ -221,6 +227,45 @@ alembic revision --autogenerate -m "update schema"
 # применить миграции
 alembic upgrade head
 ```
+
+## Импорт из папок по датам
+
+Если у вас структура вида:
+
+- `/media/utowa/AMOGUSMONST/2026/2026-04-10/*`
+- `/media/utowa/AMOGUSMONST/2026/2026-04-11/*`
+- ...
+
+можно автоматически импортировать в категории по датам:
+
+```bash
+# сначала проверка (без записи)
+python -m app.scripts.import_dated_folders \
+  --source /media/utowa/AMOGUSMONST/2026 \
+  --dry-run \
+  --skip-existing
+
+# реальный импорт с обработкой (thumbnail/optimized)
+python -m app.scripts.import_dated_folders \
+  --source /media/utowa/AMOGUSMONST/2026 \
+  --skip-existing
+```
+
+Для Docker:
+
+```bash
+docker compose exec web python -m app.scripts.import_dated_folders \
+  --source /app/data/import/2026 \
+  --skip-existing
+```
+
+Перед этим скопируйте исходные папки в volume контейнера, например в `./data/import/2026` на хосте.
+
+Примечания:
+
+- Каждая папка-дата становится категорией с тем же названием.
+- Поддерживаются фото/видео из допустимых форматов проекта.
+- Флаг `--skip-existing` пропускает файл, если в этой категории уже есть файл с тем же именем.
 
 ## Примечания
 
