@@ -194,6 +194,8 @@ sudo certbot --nginx -d seoul.utwoa.ru
 - `TG_MAX_UPLOAD_SIZE_MB` ограничивает размер одного загружаемого файла.
 - Чтобы убрать ограничение, установите `TG_MAX_UPLOAD_SIZE_MB=0`.
 - Фото в формате HEIC/HEIF (iPhone) поддерживаются и автоматически конвертируются в web-версии (`optimized/thumbnail` в JPEG).
+- Для крупных файлов через Nginx увеличьте `client_max_body_size` (в примере конфига уже `2G`).
+- После изменения лимитов перезапустите сервисы: `docker compose up -d --build web` и `sudo systemctl reload nginx`.
 
 ## Структура просмотра
 

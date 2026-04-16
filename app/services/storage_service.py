@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from fastapi import UploadFile
+
 from app.core.config import settings
 
 
@@ -19,6 +21,33 @@ class StorageService:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
         return path
+
+    async def save_upload_stream(
+        self,
+        relative_path: str,
+        upload: UploadFile,
+        max_size_bytes: int = 0,
+        chunk_size: int = 1024 * 1024,
+    ) -> tuple[Path, int]:
+        path = self.absolute_path(relative_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        total_size = 0
+        with path.open("wb") as dst:
+            while True:
+                chunk = await upload.read(chunk_size)
+                if not chunk:
+                    break
+                total_size += len(chunk)
+                if max_size_bytes > 0 and total_size > max_size_bytes:
+                    dst.close()
+                    if path.exists():
+                        path.unlink()
+                    raise ValueError("File exceeds size limit")
+                dst.write(chunk)
+
+        await upload.seek(0)
+        return path, total_size
 
     def delete_if_exists(self, relative_path: str | None) -> None:
         if not relative_path:

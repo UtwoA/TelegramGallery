@@ -70,7 +70,16 @@
             window.location.href = "/all-photos";
           }, 450);
         } else {
-          if (statusNode) statusNode.textContent = "Ошибка загрузки";
+          let message = "Ошибка загрузки";
+          try {
+            const payload = JSON.parse(xhr.responseText || "{}");
+            if (payload.detail) message = String(payload.detail);
+          } catch (_err) {
+            if (xhr.status === 413) {
+              message = "Файл слишком большой для текущего лимита";
+            }
+          }
+          if (statusNode) statusNode.textContent = message;
         }
       };
 

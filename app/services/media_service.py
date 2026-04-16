@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
@@ -15,7 +16,7 @@ from app.utils.media_utils import detect_media_type, extension_for_original, gue
 @dataclass
 class MediaCreatePayload:
     filename: str
-    bytes_data: bytes
+    bytes_data: bytes = b""
     mime_type: str | None = None
     title: str | None = None
     description: str | None = None
@@ -47,7 +48,33 @@ class MediaService:
         ext = extension_for_original(payload.filename)
         original_rel = storage_service.relative_for("originals", media_uuid, ext)
         original_abs = storage_service.save_bytes(original_rel, payload.bytes_data)
+        return self._create_with_original(owner, payload, media_uuid, mime_type, media_type, original_rel, original_abs)
 
+    def create_media_from_existing_original(
+        self,
+        owner: User,
+        payload: MediaCreatePayload,
+        original_rel: str,
+        original_abs: Path,
+    ) -> MediaFile:
+        mime_type = guess_mime(payload.filename, payload.mime_type)
+        media_type = detect_media_type(payload.filename, mime_type)
+        if media_type is None:
+            raise ValueError("Unsupported file type")
+
+        media_uuid = Path(original_rel).stem
+        return self._create_with_original(owner, payload, media_uuid, mime_type, media_type, original_rel, original_abs)
+
+    def _create_with_original(
+        self,
+        owner: User,
+        payload: MediaCreatePayload,
+        media_uuid: str,
+        mime_type: str,
+        media_type: MediaType,
+        original_rel: str,
+        original_abs: Path,
+    ) -> MediaFile:
         media = MediaFile(
             uuid=media_uuid,
             owner_id=owner.id,

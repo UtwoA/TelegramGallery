@@ -1,6 +1,7 @@
 from collections import defaultdict
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -17,6 +18,7 @@ from app.repositories.user_repository import UserRepository
 from app.services.media_processor import media_processor
 from app.services.media_service import MediaCreatePayload, MediaService
 from app.services.storage_service import storage_service
+from app.utils.media_utils import extension_for_original
 from app.web.auth import admin_guard, auth_guard, get_client_ip, is_admin, is_authenticated
 from app.web.login_rate_limiter import login_rate_limiter
 
@@ -345,11 +347,20 @@ async def upload_files(
 
     uploaded_ids: list[str] = []
     for upload in files:
-        content = await upload.read()
-        if settings.max_upload_size_mb > 0:
-            max_size = settings.max_upload_size_mb * 1024 * 1024
-            if len(content) > max_size:
-                raise HTTPException(status_code=400, detail=f"File {upload.filename} exceeds size limit")
+        original_name = upload.filename or "file.bin"
+        media_uuid = str(uuid4())
+        ext = extension_for_original(original_name)
+        original_rel = storage_service.relative_for("originals", media_uuid, ext)
+
+        max_size = settings.max_upload_size_mb * 1024 * 1024 if settings.max_upload_size_mb > 0 else 0
+        try:
+            original_abs, _size = await storage_service.save_upload_stream(
+                relative_path=original_rel,
+                upload=upload,
+                max_size_bytes=max_size,
+            )
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"File {original_name} exceeds size limit") from None
 
         parsed_shot_at = None
         if shot_at:
@@ -359,8 +370,7 @@ async def upload_files(
                 parsed_shot_at = None
 
         payload = MediaCreatePayload(
-            filename=upload.filename or "file.bin",
-            bytes_data=content,
+            filename=original_name,
             mime_type=upload.content_type,
             title=title,
             description=description,
@@ -375,7 +385,12 @@ async def upload_files(
             show_on_landing=_bool_from_form(show_on_landing),
             display_order=display_order,
         )
-        media = service.create_media(user, payload)
+        media = service.create_media_from_existing_original(
+            owner=user,
+            payload=payload,
+            original_rel=original_rel,
+            original_abs=original_abs,
+        )
         uploaded_ids.append(media.uuid)
 
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
