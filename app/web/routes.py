@@ -230,7 +230,7 @@ def landing_page(request: Request, db: Session = Depends(get_db)):
                 sort="uploaded_desc",
                 include_decorative=False,
                 landing_only=True,
-                limit=48,
+                limit=180,
                 offset=0,
             )
         )
@@ -240,7 +240,7 @@ def landing_page(request: Request, db: Session = Depends(get_db)):
             include_decorative=False,
             landing_only=True,
             uncategorized_only=True,
-            limit=48,
+            limit=180,
             offset=0,
         )
     )
@@ -248,7 +248,7 @@ def landing_page(request: Request, db: Session = Depends(get_db)):
     sections = _build_story_sections(
         categories,
         media_items,
-        max_items_per_section=24,
+        max_items_per_section=96,
         random_photo_preview=True,
     )
 
