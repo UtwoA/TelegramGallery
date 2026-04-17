@@ -16,8 +16,9 @@
 
 <section class="panel util-head reveal">
   <h1>Все фото и видео</h1>
-  <p class="muted">Все разделы раскрыты. Быстрая прокрутка всего архива в функциональном режиме.</p>
+  <p class="muted">Показано {{ displayed_count }} из {{ total_count }} файлов.</p>
   <form class="filters" method="get">
+    <input type="hidden" name="page" value="1" />
     <label>
       Категория
       <select name="category_id">
@@ -33,6 +34,15 @@
         {% for key, label in sort_options.items() %}
           <option value="{{ key }}" {% if key == sort %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
+      </select>
+    </label>
+    <label>
+      На странице
+      <select name="per_page">
+        <option value="60" {% if per_page == 60 %}selected{% endif %}>60</option>
+        <option value="120" {% if per_page == 120 %}selected{% endif %}>120</option>
+        <option value="180" {% if per_page == 180 %}selected{% endif %}>180</option>
+        <option value="240" {% if per_page == 240 %}selected{% endif %}>240</option>
       </select>
     </label>
     <button type="submit">Применить</button>
@@ -141,10 +151,10 @@
           {% endif %}
           <a href="/story/{{ item.uuid }}" class="card-preview">
             {% if item.media_type.value == "image" %}
-              <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+              <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" decoding="async" />
             {% else %}
               <div class="video-preview-wrap">
-                <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+                <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" decoding="async" />
                 <span class="video-badge">Видео</span>
               </div>
             {% endif %}
@@ -156,4 +166,20 @@
 {% else %}
   <section class="panel empty-state">Файлы пока не загружены.</section>
 {% endfor %}
+
+{% if total_pages > 1 %}
+  <section class="panel reveal">
+    <nav class="pagination">
+      {% set prev_page = page - 1 %}
+      {% set next_page = page + 1 %}
+      {% if page > 1 %}
+        <a class="btn secondary" href="/all-photos?page={{ prev_page }}&per_page={{ per_page }}{% if selected_category_id %}&category_id={{ selected_category_id }}{% endif %}&sort={{ sort }}">Назад</a>
+      {% endif %}
+      <span class="muted">Страница {{ page }} из {{ total_pages }}</span>
+      {% if page < total_pages %}
+        <a class="btn secondary" href="/all-photos?page={{ next_page }}&per_page={{ per_page }}{% if selected_category_id %}&category_id={{ selected_category_id }}{% endif %}&sort={{ sort }}">Вперед</a>
+      {% endif %}
+    </nav>
+  </section>
+{% endif %}
 {% endblock %}

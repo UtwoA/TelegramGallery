@@ -318,6 +318,20 @@ body.lightbox-open {
   flex-wrap: wrap;
 }
 
+.section-more-link {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .flash {
   margin: 0 0 12px;
   padding: 10px 12px;

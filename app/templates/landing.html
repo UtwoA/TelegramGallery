@@ -60,10 +60,10 @@
           <article class="card {% if loop.index > 5 %}is-hidden extra-card{% endif %}">
             <a href="/story/{{ item.uuid }}" class="card-preview">
               {% if item.media_type.value == "image" %}
-                <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+                <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" decoding="async" />
               {% else %}
                 <div class="video-preview-wrap">
-                  <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" />
+                  <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" decoding="async" />
                   <span class="video-badge">Видео</span>
                 </div>
               {% endif %}
@@ -71,6 +71,14 @@
           </article>
         {% endfor %}
       </div>
+
+      {% if section.more_count > 0 %}
+        <div class="section-more-link">
+          <a class="btn secondary" href="/all-photos?{% if section.category_id %}category_id={{ section.category_id }}&{% endif %}sort=uploaded_desc">
+            Показать еще {{ section.more_count }} файлов в архиве
+          </a>
+        </div>
+      {% endif %}
     </section>
 
     {% if mood_images and loop.index0 < mood_images|length %}

@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import MediaFile
@@ -55,10 +55,12 @@ class MediaRepository:
         sort: str = "uploaded_desc",
         include_decorative: bool = False,
         landing_only: bool = False,
+        limit: int | None = None,
+        offset: int = 0,
     ) -> list[MediaFile]:
-        query = select(MediaFile).options(
-            selectinload(MediaFile.tags), selectinload(MediaFile.category), selectinload(MediaFile.place)
-        )
+        # Lightweight query for gallery pages: relationships are not required there
+        # and selectinload on big datasets significantly slows down rendering.
+        query = select(MediaFile)
         if not include_decorative:
             query = query.where(MediaFile.is_decorative.is_(False))
         if landing_only:
@@ -75,9 +77,29 @@ class MediaRepository:
         else:
             query = query.order_by(MediaFile.display_order.asc(), MediaFile.uploaded_at.desc())
 
+        if offset > 0:
+            query = query.offset(offset)
+        if limit and limit > 0:
+            query = query.limit(limit)
+
         return list(self.db.scalars(query).all())
 
-    def list_decorative(self, usage: str | None = None) -> list[MediaFile]:
+    def count_gallery(
+        self,
+        category_id: int | None = None,
+        include_decorative: bool = False,
+        landing_only: bool = False,
+    ) -> int:
+        query = select(func.count(MediaFile.id))
+        if not include_decorative:
+            query = query.where(MediaFile.is_decorative.is_(False))
+        if landing_only:
+            query = query.where(MediaFile.show_on_landing.is_(True))
+        if category_id:
+            query = query.where(MediaFile.category_id == category_id)
+        return int(self.db.scalar(query) or 0)
+
+    def list_decorative(self, usage: str | None = None, limit: int | None = None) -> list[MediaFile]:
         query = (
             select(MediaFile)
             .where(MediaFile.is_decorative.is_(True), MediaFile.show_on_landing.is_(True))
@@ -85,4 +107,6 @@ class MediaRepository:
         )
         if usage:
             query = query.where(MediaFile.decor_usage == usage)
+        if limit and limit > 0:
+            query = query.limit(limit)
         return list(self.db.scalars(query).all())

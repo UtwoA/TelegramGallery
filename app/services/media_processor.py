@@ -23,13 +23,13 @@ class MediaProcessor:
                     img = img.convert("RGB")
 
                 optimized_img = img.copy()
-                optimized_img.thumbnail((1920, 1920))
-                optimized_img.save(optimized, format="JPEG", quality=86, optimize=True)
+                optimized_img.thumbnail((1600, 1600))
+                optimized_img.save(optimized, format="JPEG", quality=80, optimize=True, progressive=True)
 
-                thumb = ImageOps.fit(img, (480, 480), method=Image.Resampling.LANCZOS)
+                thumb = ImageOps.fit(img, (360, 360), method=Image.Resampling.LANCZOS)
                 if thumb.mode != "RGB":
                     thumb = thumb.convert("RGB")
-                thumb.save(thumbnail, format="JPEG", quality=82, optimize=True)
+                thumb.save(thumbnail, format="JPEG", quality=72, optimize=True, progressive=True)
             return True, None
         except Exception as exc:  # noqa: BLE001
             return False, str(exc)
@@ -52,13 +52,13 @@ class MediaProcessor:
                     edited = edited.convert("RGB")
 
                 optimized_img = edited.copy()
-                optimized_img.thumbnail((1920, 1920))
-                optimized_img.save(optimized, format="JPEG", quality=86, optimize=True)
+                optimized_img.thumbnail((1600, 1600))
+                optimized_img.save(optimized, format="JPEG", quality=80, optimize=True, progressive=True)
 
-                thumb = ImageOps.fit(edited, (480, 480), method=Image.Resampling.LANCZOS)
+                thumb = ImageOps.fit(edited, (360, 360), method=Image.Resampling.LANCZOS)
                 if thumb.mode != "RGB":
                     thumb = thumb.convert("RGB")
-                thumb.save(thumbnail, format="JPEG", quality=82, optimize=True)
+                thumb.save(thumbnail, format="JPEG", quality=72, optimize=True, progressive=True)
 
             return True, None
         except Exception as exc:  # noqa: BLE001

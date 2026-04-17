@@ -72,7 +72,7 @@ def media_preview_path(media: MediaFile) -> str:
         return "/static/img/video-placeholder.svg"
     if media.optimized_path:
         return f"/media/{media.optimized_path}"
-    return f"/media/{media.original_path}"
+    return "/static/img/image-placeholder.svg"
 
 
 def media_display_path(media: MediaFile) -> str:
@@ -118,7 +118,25 @@ def _parse_optional_int(value: str | None) -> int | None:
         return None
 
 
-def _build_story_sections(categories: list[Category], media_items: list[MediaFile]) -> list[dict[str, Any]]:
+def _parse_positive_int(value: str | None, default: int, min_value: int = 1, max_value: int = 500) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except ValueError:
+        return default
+    if parsed < min_value:
+        return min_value
+    if parsed > max_value:
+        return max_value
+    return parsed
+
+
+def _build_story_sections(
+    categories: list[Category],
+    media_items: list[MediaFile],
+    max_items_per_section: int | None = None,
+) -> list[dict[str, Any]]:
     grouped: dict[int | None, list[MediaFile]] = defaultdict(list)
     for item in media_items:
         grouped[item.category_id].append(item)
@@ -134,15 +152,18 @@ def _build_story_sections(categories: list[Category], media_items: list[MediaFil
         if not items:
             continue
 
+        render_items = items[:max_items_per_section] if max_items_per_section else items
         intro = category.story_intro or category.description or "Еще одна часть путешествия в кадрах."
         sections.append(
             {
                 "id": slugify(category.name),
                 "title": category.name,
                 "intro": intro,
-                "media_items": items,
-                "preview_items": items[:5],
-                "hidden_count": max(0, len(items) - 5),
+                "media_items": render_items,
+                "preview_items": render_items[:5],
+                "hidden_count": max(0, len(render_items) - 5),
+                "more_count": max(0, len(items) - len(render_items)),
+                "category_id": category.id,
                 "accent": accent_cycle[visible_idx % len(accent_cycle)],
             }
         )
@@ -151,14 +172,17 @@ def _build_story_sections(categories: list[Category], media_items: list[MediaFil
     uncategorized = grouped.get(None, [])
     if uncategorized:
         fallback_title = SECTION_FALLBACK_NAMES[min(len(sections), len(SECTION_FALLBACK_NAMES) - 1)]
+        render_items = uncategorized[:max_items_per_section] if max_items_per_section else uncategorized
         sections.append(
             {
                 "id": "uncategorized",
                 "title": fallback_title,
                 "intro": "Свободные моменты поездки без жесткой структуры.",
-                "media_items": uncategorized,
-                "preview_items": uncategorized[:5],
-                "hidden_count": max(0, len(uncategorized) - 5),
+                "media_items": render_items,
+                "preview_items": render_items[:5],
+                "hidden_count": max(0, len(render_items) - 5),
+                "more_count": max(0, len(uncategorized) - len(render_items)),
+                "category_id": None,
                 "accent": accent_cycle[visible_idx % len(accent_cycle)],
             }
         )
@@ -176,10 +200,17 @@ def landing_page(request: Request, db: Session = Depends(get_db)):
     taxonomy_repo = TaxonomyRepository(db)
 
     categories = taxonomy_repo.list_categories()
-    media_items = media_repo.list_gallery(sort="uploaded_desc", include_decorative=False, landing_only=True)
-    sections = _build_story_sections(categories, media_items)
+    media_items = media_repo.list_gallery(
+        sort="uploaded_desc",
+        include_decorative=False,
+        landing_only=True,
+        limit=120,
+        offset=0,
+    )
+    landing_total = media_repo.count_gallery(include_decorative=False, landing_only=True)
+    sections = _build_story_sections(categories, media_items, max_items_per_section=24)
 
-    decorative = media_repo.list_decorative()
+    decorative = media_repo.list_decorative(limit=18)
     hero_bg = next((m for m in decorative if m.decor_usage == "hero_background"), None)
     if hero_bg is None and decorative:
         hero_bg = decorative[0]
@@ -196,7 +227,7 @@ def landing_page(request: Request, db: Session = Depends(get_db)):
             "is_admin": is_admin(request),
             "preview_path": media_preview_path,
             "public_path": media_public_path,
-            "total_count": len(media_items),
+            "total_count": landing_total,
         },
     )
 
@@ -206,6 +237,8 @@ def all_photos_page(
     request: Request,
     category_id: str | None = None,
     sort: str = "uploaded_desc",
+    page: str | None = None,
+    per_page: str | None = None,
     db: Session = Depends(get_db),
 ):
     guard = auth_guard(request)
@@ -219,12 +252,25 @@ def all_photos_page(
         sort = "uploaded_desc"
 
     parsed_category_id = _parse_optional_int(category_id)
+    current_page = _parse_positive_int(page, default=1, min_value=1, max_value=10000)
+    page_size = _parse_positive_int(per_page, default=120, min_value=24, max_value=240)
+    total_items = media_repo.count_gallery(
+        category_id=parsed_category_id,
+        include_decorative=False,
+        landing_only=False,
+    )
+    total_pages = max(1, (total_items + page_size - 1) // page_size)
+    if current_page > total_pages:
+        current_page = total_pages
+    offset = (current_page - 1) * page_size
 
     media_items = media_repo.list_gallery(
         category_id=parsed_category_id,
         sort=sort,
         include_decorative=False,
         landing_only=False,
+        limit=page_size,
+        offset=offset,
     )
     categories = taxonomy_repo.list_categories()
     sections = _build_story_sections(categories, media_items)
@@ -240,7 +286,11 @@ def all_photos_page(
             "sort_options": SORT_OPTIONS,
             "is_admin": is_admin(request),
             "preview_path": media_preview_path,
-            "total_count": len(media_items),
+            "total_count": total_items,
+            "displayed_count": len(media_items),
+            "page": current_page,
+            "per_page": page_size,
+            "total_pages": total_pages,
         },
     )
 
