@@ -55,6 +55,7 @@ class MediaRepository:
         sort: str = "uploaded_desc",
         include_decorative: bool = False,
         landing_only: bool = False,
+        uncategorized_only: bool = False,
         limit: int | None = None,
         offset: int = 0,
     ) -> list[MediaFile]:
@@ -65,7 +66,9 @@ class MediaRepository:
             query = query.where(MediaFile.is_decorative.is_(False))
         if landing_only:
             query = query.where(MediaFile.show_on_landing.is_(True))
-        if category_id:
+        if uncategorized_only:
+            query = query.where(MediaFile.category_id.is_(None))
+        elif category_id:
             query = query.where(MediaFile.category_id == category_id)
 
         if sort == "uploaded_asc":
@@ -89,13 +92,16 @@ class MediaRepository:
         category_id: int | None = None,
         include_decorative: bool = False,
         landing_only: bool = False,
+        uncategorized_only: bool = False,
     ) -> int:
         query = select(func.count(MediaFile.id))
         if not include_decorative:
             query = query.where(MediaFile.is_decorative.is_(False))
         if landing_only:
             query = query.where(MediaFile.show_on_landing.is_(True))
-        if category_id:
+        if uncategorized_only:
+            query = query.where(MediaFile.category_id.is_(None))
+        elif category_id:
             query = query.where(MediaFile.category_id == category_id)
         return int(self.db.scalar(query) or 0)
 

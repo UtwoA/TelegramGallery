@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
+import random
 from typing import Any
 from uuid import uuid4
 
@@ -136,6 +137,7 @@ def _build_story_sections(
     categories: list[Category],
     media_items: list[MediaFile],
     max_items_per_section: int | None = None,
+    random_photo_preview: bool = False,
 ) -> list[dict[str, Any]]:
     grouped: dict[int | None, list[MediaFile]] = defaultdict(list)
     for item in media_items:
@@ -153,15 +155,24 @@ def _build_story_sections(
             continue
 
         render_items = items[:max_items_per_section] if max_items_per_section else items
+        photo_items = [item for item in render_items if item.media_type.value == "image"]
+        preview_count = min(5, len(photo_items))
+        if random_photo_preview and preview_count > 0:
+            preview_items = random.sample(photo_items, k=preview_count)
+        else:
+            preview_items = photo_items[:preview_count]
+        preview_ids = {item.uuid for item in preview_items}
+        ordered_items = preview_items + [item for item in render_items if item.uuid not in preview_ids]
         intro = category.story_intro or category.description or "Еще одна часть путешествия в кадрах."
         sections.append(
             {
                 "id": slugify(category.name),
                 "title": category.name,
                 "intro": intro,
-                "media_items": render_items,
-                "preview_items": render_items[:5],
-                "hidden_count": max(0, len(render_items) - 5),
+                "media_items": ordered_items,
+                "preview_items": preview_items,
+                "preview_count": preview_count,
+                "hidden_count": max(0, len(ordered_items) - preview_count),
                 "more_count": max(0, len(items) - len(render_items)),
                 "category_id": category.id,
                 "accent": accent_cycle[visible_idx % len(accent_cycle)],
@@ -173,14 +184,23 @@ def _build_story_sections(
     if uncategorized:
         fallback_title = SECTION_FALLBACK_NAMES[min(len(sections), len(SECTION_FALLBACK_NAMES) - 1)]
         render_items = uncategorized[:max_items_per_section] if max_items_per_section else uncategorized
+        photo_items = [item for item in render_items if item.media_type.value == "image"]
+        preview_count = min(5, len(photo_items))
+        if random_photo_preview and preview_count > 0:
+            preview_items = random.sample(photo_items, k=preview_count)
+        else:
+            preview_items = photo_items[:preview_count]
+        preview_ids = {item.uuid for item in preview_items}
+        ordered_items = preview_items + [item for item in render_items if item.uuid not in preview_ids]
         sections.append(
             {
                 "id": "uncategorized",
                 "title": fallback_title,
                 "intro": "Свободные моменты поездки без жесткой структуры.",
-                "media_items": render_items,
-                "preview_items": render_items[:5],
-                "hidden_count": max(0, len(render_items) - 5),
+                "media_items": ordered_items,
+                "preview_items": preview_items,
+                "preview_count": preview_count,
+                "hidden_count": max(0, len(ordered_items) - preview_count),
                 "more_count": max(0, len(uncategorized) - len(render_items)),
                 "category_id": None,
                 "accent": accent_cycle[visible_idx % len(accent_cycle)],
@@ -200,15 +220,37 @@ def landing_page(request: Request, db: Session = Depends(get_db)):
     taxonomy_repo = TaxonomyRepository(db)
 
     categories = taxonomy_repo.list_categories()
-    media_items = media_repo.list_gallery(
-        sort="uploaded_desc",
-        include_decorative=False,
-        landing_only=True,
-        limit=120,
-        offset=0,
+    media_items: list[MediaFile] = []
+    for category in categories:
+        if not category.show_on_landing:
+            continue
+        media_items.extend(
+            media_repo.list_gallery(
+                category_id=category.id,
+                sort="uploaded_desc",
+                include_decorative=False,
+                landing_only=True,
+                limit=48,
+                offset=0,
+            )
+        )
+    media_items.extend(
+        media_repo.list_gallery(
+            sort="uploaded_desc",
+            include_decorative=False,
+            landing_only=True,
+            uncategorized_only=True,
+            limit=48,
+            offset=0,
+        )
     )
     landing_total = media_repo.count_gallery(include_decorative=False, landing_only=True)
-    sections = _build_story_sections(categories, media_items, max_items_per_section=24)
+    sections = _build_story_sections(
+        categories,
+        media_items,
+        max_items_per_section=24,
+        random_photo_preview=True,
+    )
 
     decorative = media_repo.list_decorative(limit=18)
     hero_bg = next((m for m in decorative if m.decor_usage == "hero_background"), None)

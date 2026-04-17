@@ -57,7 +57,7 @@
 
       <div class="gallery-grid showcase-grid" data-group="{{ section.id }}">
         {% for item in section.media_items %}
-          <article class="card {% if loop.index > 5 %}is-hidden extra-card{% endif %}">
+          <article class="card {% if loop.index > section.preview_count %}is-hidden extra-card{% endif %}">
             <a href="/story/{{ item.uuid }}" class="card-preview">
               {% if item.media_type.value == "image" %}
                 <img src="{{ preview_path(item) }}" alt="{{ item.title or item.original_filename }}" loading="lazy" decoding="async" />
@@ -71,6 +71,9 @@
           </article>
         {% endfor %}
       </div>
+      {% if section.preview_count == 0 and section.media_items|length > 0 %}
+        <p class="muted">В этой секции нет фото для превью. Нажмите «Раскрыть раздел».</p>
+      {% endif %}
 
       {% if section.more_count > 0 %}
         <div class="section-more-link">
